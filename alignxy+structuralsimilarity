@@ -1,0 +1,153 @@
+import cv2
+import numpy as np
+from skimage.metrics import structural_similarity
+
+template_fp = (r'C:\Users\raque\PycharmProjects\pythonProject4\AA_CAMERA\2024-07-24_16-59-59.png')
+tester_fp = (r'C:\Users\raque\PycharmProjects\pythonProject4\AA_CAMERA\2024-07-24_17-00-15.png')
+
+def align_images(template_fp, tester_fp):
+    #output_templatefp = r'C:\Users\rbaptista\OneDrive - Leica Camera AG\Ambiente de Trabalho\AA_CAMERA\imagem_mira2_3.png'
+    #output_testerfp = r'C:\Users\rbaptista\OneDrive - Leica Camera AG\Ambiente de Trabalho\AA_CAMERA\imagem_mira2_3_riscado.png'
+
+    image1 = cv2.imread(template_fp)
+    image2 = cv2.imread(tester_fp)
+
+    #!! careful picking place for template alignment
+    template = cv2.imread(r'C:\Users\raque\PycharmProjects\pythonProject4\AA_CAMERA_edited\symbol1.png')
+
+    image1_gray = cv2.cvtColor(image1, cv2.COLOR_BGR2GRAY)
+    image2_gray = cv2.cvtColor(image2, cv2.COLOR_BGR2GRAY)
+    template_gray = cv2.cvtColor(template, cv2.COLOR_BGR2GRAY)
+
+    result1 = cv2.matchTemplate(image1_gray, template_gray, cv2.TM_CCOEFF_NORMED)
+    result2 = cv2.matchTemplate(image2_gray, template_gray, cv2.TM_CCOEFF_NORMED)
+
+    _, _, _, max_loc1 = cv2.minMaxLoc(result1)
+    _, _, _, max_loc2 = cv2.minMaxLoc(result2)
+
+    x_pixels = max_loc1[0] - max_loc2[0]
+    y_pixels = max_loc1[1] - max_loc2[1]
+    h, w = image2_gray.shape
+
+    print(f'{max_loc1} template location, and {max_loc2} img location')
+    print(f'{x_pixels} pixels need editing in the x-direction, and {y_pixels} in the y-direction')
+
+    if x_pixels < 0:  # we need to remove x_edit_pixels number of pixels (starting from the origin of the x axis) and add same  number of pixels at the end (to keep img size)
+        x_pixels_pos = x_pixels * (-1)
+        # we remove at the beginning
+        new_image_x = image2_gray[:, : w - (x_pixels_pos)]
+        # we add at the end
+        new_image_x = np.pad(new_image_x, ((0, 0), (0, x_pixels_pos)), mode='constant', constant_values=(
+            0, 0))  # np.pad(new_image,((pixels_added_at_beggining_of_y,pixels_added_at_end_of_y),((etcetc
+
+    else:  # we need to add x_edit_pixels number of pixels (starting from the origin of the x axis)
+        # we remove at the end
+        new_image_x = image2_gray[:, :w - x_pixels]
+        # we add
+        new_image_x = np.pad(new_image_x, ((0, 0), ((x_pixels), 0)), mode='constant', constant_values=(0, 0))
+
+    if y_pixels < 0:  # we need to remove y_edit_pixels number of pixels (starting from the origin of the y axis)
+        y_pixels_pos = y_pixels * (-1)
+        new_image_y = new_image_x[: h - (y_pixels_pos), :]
+        new_image_y = np.pad(new_image_y, ((0, y_pixels_pos), (0, 0)), mode='constant', constant_values=(0, 0))
+
+    else:  # we need to add y_edit_pixels number of pixels (starting from the origin of the y axis)
+        new_image_y = new_image_x[:h - y_pixels, :]
+        new_image_y = np.pad(new_image_y, ((y_pixels, 0), (0, 0)), mode='constant', constant_values=(0, 0))
+
+    image2 = new_image_y
+
+    orb = cv2.ORB_create() #we are using orb to find keypoints (ex: corners of the symbol) that will help us align the picture
+
+    # Detect keypoints and descriptors
+    keypoints1, descriptors1 = orb.detectAndCompute(image1, None) #list of points that are most recognizable
+    keypoints2, descriptors2 = orb.detectAndCompute(image2, None)
+
+    bf = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=True)
+    #brute force matcher, used to find matches between both images
+    #norm_hamming - Hamming distance is used to measure the number of bit differences between two descriptors.
+
+    matches = bf.match(descriptors1, descriptors2) #matches each descriptor from img1 to its closest descriptor in img2 using the Hamming distance
+
+    # Sort matches based on distance
+    matches = sorted(matches, key=lambda x: x.distance)
+
+    #this part here is not really important its mostly so i can see whhere its choosing to match
+    # Draw first 20 matches
+    img_matches = cv2.drawMatches(image1, keypoints1, image2, keypoints2, matches[:20], None,flags=cv2.DrawMatchesFlags_NOT_DRAW_SINGLE_POINTS)
+    # Display matching keypoints
+    cv2.imshow('Matching Points', img_matches)
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
+
+    # Extract matched keypoints
+    src_pts = np.float32([keypoints1[m.queryIdx].pt for m in matches]).reshape(-1, 1, 2)
+    dst_pts = np.float32([keypoints2[m.trainIdx].pt for m in matches]).reshape(-1, 1, 2)
+
+    # Estimate affine transformation matrix (for rotation and translation only)
+    affine_matrix, _ = cv2.estimateAffine2D(dst_pts, src_pts)
+
+    # Extract the rotation angle
+    rotation_matrix = affine_matrix[:2, :2]
+    angle = np.arctan2(rotation_matrix[1, 0], rotation_matrix[0, 0]) * (180 / np.pi)
+
+    # Get the center of the skewed image
+    height, width = image2.shape
+    center = (width // 2, height // 2)
+
+    # Rotate the skewed image to align with the reference image
+    rotation_matrix = cv2.getRotationMatrix2D(center, -angle, 1.0)
+    aligned_img2 = cv2.warpAffine(image2, rotation_matrix, (width, height))
+    # warp affine:
+    # Applies an Affine Transform to the image. This transform is obtained from the relation between three points. We use the function cv::warpAffine for that purpose.
+    # Applies a Rotation to the image after being transformed. This rotation is with respect to the image center
+
+    cv2.imshow('Aligned Image', aligned_img2)
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
+
+    template = image1
+    analyzed_image = aligned_img2
+
+    # Convert images to grayscale
+    template_gray = cv2.cvtColor(template, cv2.COLOR_BGR2GRAY)
+    #analyzed_image_gray = cv2.cvtColor(analyzed_image, cv2.COLOR_BGR2GRAY)
+
+    # Compute SSIM between the two images
+    (score, diff) = structural_similarity(template_gray, analyzed_image, full=True)
+    print("Image Similarity: {:.4f}%".format(score * 100))
+
+    # The diff image contains the actual image differences between the two images
+    # and is represented as a floating point data type in the range [0,1]
+    # so we must convert the array to 8-bit unsigned integers in the range
+    # [0,255] before we can use it with OpenCV
+    diff = (diff * 255).astype("uint8")
+    diff = cv2.normalize(diff, None, 0, 255, cv2.NORM_MINMAX) #since the differences between images are very small some enhancement in contrast is needed
+
+    cv2.imwrite(r'C:\Users\raque\PycharmProjects\pythonProject4\AA_CAMERA_edited\imagewdifferences1.jpg',diff)
+    # Threshold the difference image, followed by finding contours to
+    # obtain the regions of the two input images that differ
+    thresh = cv2.adaptiveThreshold(diff, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV, 11, 2) #Adaptive thresholding calculates the threshold for smaller regions of the image, making it suitable for images with varying illumination or small differences.
+
+    # Find contours in the thresholded image
+    contours = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    contours = contours[0] if len(contours) == 2 else contours[1]
+
+    # sort contours by area starting from the largest one
+    contours = sorted(contours, key=cv2.contourArea, reverse=True)
+    N = 5
+    largest_contours = contours[:N]
+
+    mask = np.zeros_like(thresh)
+    scale_factor = 0.2
+    resized_mask = cv2.resize(mask, None, fx=scale_factor, fy=scale_factor, interpolation=cv2.INTER_AREA)
+    cv2.imshow('mask', resized_mask)
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
+
+    cv2.drawContours(mask, largest_contours, -1, (255), thickness=cv2.FILLED)
+
+    result_image = cv2.bitwise_or(diff, diff, mask=mask)
+    cv2.imwrite(r'C:\Users\raque\PycharmProjects\pythonProject4\AA_CAMERA_edited\resultimage.jpg',result_image)
+
+align_images(template_fp, tester_fp)
