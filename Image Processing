@@ -1,0 +1,755 @@
+import sqlite3
+import cv2
+import pytesseract
+
+import matplotlib.pyplot as plt
+import numpy as np
+from pyparsing import empty
+
+from rembg import  remove
+from PIL import Image, ImageFilter, ImageOps, ImageEnhance, ImageDraw
+from skimage.metrics import structural_similarity
+
+
+
+def adding_imgs_2tester():
+    create_table_sql2 = """CREATE TABLE IF NOT EXISTS HistoryDB (
+    operador2 text, 
+    data2 text, 
+    hora2 text, 
+    model2 text, 
+    im1_2 text, 
+    im2_2 text, 
+    im3_2 text, 
+    im4_2 text,
+    im1_2e text, 
+    im2_2e text, 
+    im3_2e text, 
+    im4_2e text,  
+    Øobjetiva2 integer, 
+    num_série2 text,
+    nonconformity text
+    );"""
+
+    conn2 = sqlite3.connect("history_database.db")
+    cursor = conn2.cursor()
+    cursor.execute(create_table_sql2)
+
+    if conn2 is not None:
+        # for fortis
+        # tester_images = [r'C:\Users\rbaptista\PycharmProjects\pythonProject1\AA_CAMERA\2024-09-17_17-57-59.png',
+        #                  r'C:\Users\rbaptista\PycharmProjects\pythonProject1\AA_CAMERA\2024-09-17_17-58-17.png',
+        #                 r'C:\Users\rbaptista\PycharmProjects\pythonProject1\AA_CAMERA\2024-09-17_17-58-36.png',
+        #                r'C:\Users\rbaptista\PycharmProjects\pythonProject1\AA_CAMERA\2024-09-17_17-58-36.png'
+        #                ]
+        # for magnus
+        tester_images = [r'C:\Users\rbaptista\PycharmProjects\pythonProject1\AA_CAMERA\2024-09-17_17-51-06.png',
+                         r'C:\Users\rbaptista\PycharmProjects\pythonProject1\AA_CAMERA\2024-09-17_17-51-25.png',
+                         r'C:\Users\rbaptista\PycharmProjects\pythonProject1\AA_CAMERA\2024-09-17_17-51-44.png',
+                         r'C:\Users\rbaptista\PycharmProjects\pythonProject1\AA_CAMERA\2024-09-17_17-52-02.png'
+                         ]
+        # Assign file paths (not the actual images)
+        im1_2 = tester_images[0]  # Path of image 1
+        im2_2 = tester_images[1]  # Path of image 2
+        im3_2 = tester_images[2]  # Path of image 3
+        im4_2 = tester_images[3]  # Path of image 4
+        im1_2e = ''
+        im2_2e = ''
+        im3_2e = ''
+        im4_2e = ''
+        operador2 = ''
+        data2 = ''
+        hora2 = ''
+        Øobjetiva2 = ''
+        model2 = ''
+        num_série2 = ''
+        nonconformity = ''
+        cursor = conn2.cursor()
+        cursor.execute("INSERT INTO HistoryDB VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                       (operador2, data2, hora2, model2, im1_2, im2_2, im3_2, im4_2, im1_2e, im2_2e, im3_2e, im4_2e,
+                        Øobjetiva2, num_série2, nonconformity))
+        conn2.commit()
+        conn2.close()
+
+    else:
+        print("Error! Cannot create the database connection.")
+#will need to change roi for diameter if it reads  fortis for ex
+def template_db_prepping():
+    print('This is the function for template db prepping')
+
+    template_images = None  # Initialize template_images so it's accessible after the if statement
+
+    try:
+        conn1 = sqlite3.connect("template_database.db")
+        cursor = conn1.cursor()
+
+        # Query to find the last row where the first two columns are NULL or empty
+        cursor.execute("""
+            SELECT rowid, im1_1, im2_1, im3_1, im4_1
+            FROM TemplateDB
+            WHERE (model1 IS NULL OR model1 = '')
+              AND (Øobjetiva1 IS NULL OR Øobjetiva1 = '')
+            ORDER BY rowid DESC 
+            LIMIT 1;
+        """)
+        last_row = cursor.fetchone()
+
+        if last_row:
+            row_id, im1_1, im2_1, im3_1, im4_1 = last_row
+            template_images = [im1_1, im2_1, im3_1, im4_1]
+            print("Template images:", template_images)
+        else:
+            print("No rows found with empty or NULL in the first two columns.")
+            return  # Exit the function if no row is found
+
+        # Access template_images after the if block if available
+        if template_images:
+            print('Accessing template_images:', template_images)
+
+            # Process the second image (im2_1)
+            im2_1 = cv2.cvtColor(cv2.imread(template_images[1]), cv2.COLOR_BGR2RGB)
+
+            # Getting diameter measurement from the template
+            template_4diameter = im2_1.copy()
+
+            # Assuming 'remove' is a function that processes the image
+            template_4diameter = remove(template_4diameter)  # Define this function as per your need
+
+            # Reading model name from the template using Tesseract OCR It's the same regardless of the model
+            pytesseract.pytesseract.tesseract_cmd = r'C:\Users\rbaptista\AppData\Local\Programs\Tesseract-OCR\tesseract.exe'
+            #roi_template = im2_1[1730:1900, 540:640]
+            roi_template = im2_1[1730:1936, 681-200:800-120]
+
+            roi_template_gray = cv2.cvtColor(roi_template, cv2.COLOR_BGRA2GRAY)
+
+            _, binary_image = cv2.threshold(roi_template_gray, 50, 255, cv2.THRESH_BINARY)
+
+            model_name = pytesseract.image_to_string(roi_template_gray).strip()  # Clean up the extracted text
+            plt.imshow(roi_template)
+            plt.title(f'calibration window - roi - model name reading of template - currently ([1730:1936, 681:800]), model_name:{model_name}')
+            plt.axis('off')
+            plt.show()
+
+            if '56' in model_name: #coordinates
+                roi_template = template_4diameter[0:180]
+
+            if '50' in model_name:
+                roi_template = template_4diameter[0:180]
+
+            if '24' in model_name:
+                roi_template = template_4diameter[300:500]
+
+            edges = cv2.Canny(roi_template, 0, 150, apertureSize=3)
+
+            # Initialize real_diameter with a default value
+            real_diameter = None  # Default to None to handle no contour case
+
+            contours, _ = cv2.findContours(edges, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+            if contours:
+                x_coordinates = [point[0][0] for contour in contours for point in contour]
+                min_x_template = min(x_coordinates)
+                max_x_template = max(x_coordinates)
+
+                diameter = max_x_template - min_x_template
+                print('Diameter:', diameter)
+
+                scaled_diameter = diameter*0.12
+                real_diameter_list = [24, 42, 50, 56]
+                real_diameter = min(real_diameter_list, key=lambda x: abs(x - scaled_diameter))
+                print('Closest Value from List:', real_diameter)
+            else:
+                print("No contours found, setting default real_diameter.")
+                real_diameter = -1  # Set a default value or handle it accordingly
+
+
+            # Check if model name already exists in the database
+            cursor.execute("SELECT COUNT(*) FROM TemplateDB WHERE model1 = ?", (model_name,))
+            count = cursor.fetchone()[0]
+
+            if count > 0:
+                print(f"Model '{model_name}' already exists in the database. Skipping insertion.")
+            else:
+                # Now update the row in the database with the model name and diameter
+                cursor.execute("""
+                    UPDATE TemplateDB
+                    SET model1 = ?, Øobjetiva1 = ?
+                    WHERE rowid = ?
+                """, (model_name, real_diameter, row_id))
+
+                conn1.commit()  # Commit the changes
+                print(f"Updated row {row_id} with model '{model_name}' and diameter {real_diameter}")
+
+    except sqlite3.Error as e:
+        print(e, 'error')
+
+    finally:
+        if conn1:
+            conn1.close()  # Close the connection to the database
+
+def tester_analysis():
+    print('This is a function for tester analysis')
+    systemswarningslist = [0, 0, 0, 0, 0, 0]
+    conn1 = None  # Initialize conn1 here for better handling
+    try:
+        conn2 = sqlite3.connect("history_database.db")
+        cursor = conn2.cursor()
+
+        # Query to find the last row where the first two columns are NULL or empty
+        cursor.execute("""
+            SELECT rowid, im1_2, im2_2, im3_2, im4_2 
+            FROM HistoryDB
+            WHERE (model2 IS NULL OR model2 = '')
+              AND (Øobjetiva2 IS NULL OR Øobjetiva2 = '')
+            ORDER BY rowid DESC 
+            LIMIT 1;
+        """)
+        last_row = cursor.fetchone()
+
+        if last_row:
+            row_id, im1_2, im2_2, im3_2, im4_2 = last_row
+            tester_images = [im1_2, im2_2, im3_2, im4_2]
+            print("Tester images:", tester_images)
+        else:
+            print("No rows found with empty or NULL in the first two columns.")
+            return  # Exit the function if no row is found
+
+        # Access template_images after the if block if available
+        if tester_images:
+            print('Accessing tester_images:', tester_images)
+
+            # (1) Process the second image (im2_1)
+            im2_2 = cv2.cvtColor(cv2.imread(tester_images[1]), cv2.COLOR_BGR2RGB)
+
+            # (2) Process the ROI for model name extraction
+            pytesseract.pytesseract.tesseract_cmd = r'C:\Users\rbaptista\AppData\Local\Programs\Tesseract-OCR\tesseract.exe'
+            roi_template = im2_2[1730:1936, 681-200:800-120]
+            #roi_template = im2_2[1730:1900, 540:640]#coordinates ALWAYS THE SAME : OCULAR GROUP IS SAME SIZE
+
+            roi_template_gray = cv2.cvtColor(roi_template, cv2.COLOR_BGR2GRAY)
+            _, binary_image = cv2.threshold(roi_template_gray, 50, 255, cv2.THRESH_BINARY)
+
+            model_name_tester = pytesseract.image_to_string(roi_template_gray).strip()
+            print(f'Extracted Model Name from tester: {model_name_tester}')
+            #plt.imshow(roi_template)
+            #plt.title(f'calibration window - roi - model name reading of tester - currently ([1730:1936, 681:800]), model name:{model_name_tester}')
+            #plt.axis('off')
+            #plt.show()
+
+            if model_name_tester == '':
+                systemswarningslist[0] = 1
+
+            elif 'MAGNUS' not in model_name_tester:
+                systemswarningslist[1] = 1
+
+            # (3) Look for model name in the template database
+            conn1 = sqlite3.connect("template_database.db")
+            cursor_template = conn1.cursor()
+
+            cursor_template.execute("""
+                SELECT im1_1, im2_1, im3_1, im4_1, Øobjetiva1
+                FROM TemplateDB
+                WHERE model1 = ?""", (model_name_tester,))
+
+            template_row = cursor_template.fetchone()
+            global real_diameter_tester
+            # (4) Handle template data retrieval
+            if template_row:
+                im1_1, im2_1, im3_1, im4_1, Øobjetiva1 = template_row
+                print(f"Template data for model '{model_name_tester}': im1_1={im1_1}, im2_1={im2_1}, im3_1={im3_1}, im4_1={im4_1}, Øobjetiva1={Øobjetiva1}")
+
+                # (5) Cut out level 1 - image processing to get the diameter
+                template_4diameter = im2_2.copy()
+                template_4diameter = remove(template_4diameter)  # Make sure this function exists
+                if '56' in model_name_tester:  # coordinates
+                    roi_template = template_4diameter[0:180]
+
+                if '50' in model_name_tester:
+                    roi_template = template_4diameter[0:100]
+                    #plt.imshow(template_4diameter)
+                    #plt.title(f'Calibration for diameter measurement of model {model_name_tester}')
+                    #plt.axis('off')
+                    #plt.show()
+
+                if '24' in model_name_tester:
+                    roi_template = template_4diameter[300:500]
+                    #plt.imshow(template_4diameter)
+                    #plt.title(f'Calibration for diameter measurement of model {model_name_tester}')
+                    #plt.axis('off')
+                    #plt.show()
+                # Initialize real_diameter with a default value
+                real_diameter_tester = None
+
+                # Get contours and compute diameter
+                edges = cv2.Canny(roi_template, 0, 150, apertureSize=3)
+                contours, _ = cv2.findContours(edges, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+                if contours:
+                    x_coordinates = [point[0][0] for contour in contours for point in contour]
+                    min_x_diameter = min(x_coordinates)
+                    max_x_diameter = max(x_coordinates)
+
+                    diameter = max_x_diameter - min_x_diameter
+                    print('Diameter:', diameter)
+
+                    #Calibration needed expected size//pixel size = ratio to get scaled diameter
+                    scaled_diameter = diameter*0.12
+                    real_diameter_list = [24, 42, 50, 56]
+                    real_diameter_tester = min(real_diameter_list, key=lambda x: abs(x - scaled_diameter))
+                    print('Calibration: losest Value from List:', real_diameter_tester)
+
+                    # (6) Compare template diameter with tester
+                    if real_diameter_tester == Øobjetiva1:
+                        print('Objective diameter matches with model')
+                    else:
+                        print('Objective diameter does not match with model')
+                        systemswarningslist[2] = 1
+            else:
+                print(f"Model '{model_name_tester}' not found in the template database.")
+                systemswarningslist[3] = 1
+
+            conn1.close()
+
+            # (7) Get im3_2
+            im3_2 = cv2.cvtColor(cv2.imread(tester_images[2]), cv2.COLOR_BGR2RGB)
+
+            # (8) Image processing for serial number extraction
+            tester_4diameter = im3_2.copy()
+
+            _, width = tester_4diameter.shape[:2]
+            fith_width = width // 5
+            #roi_tester = tester_4diameter[1770:1860, 555:585]   #SHOULD ALWAYS BE THE SAME SINCE OCULAR PIECE DOES NOT CHANGE
+            roi_tester = tester_4diameter[1788:1900, 560:600]
+            plt.imshow(tester_4diameter)
+            plt.title('calibration window - roi - serial number reading of tester - currently ([1788:1885, 760:790])')
+            plt.axis('off')
+            plt.show()
+
+            gray = cv2.cvtColor(roi_tester, cv2.COLOR_RGB2GRAY)
+            #plt.imshow(gray)
+            #plt.title(f'serial num roi maker - gray')
+            #plt.axis('off')
+            #plt.show()
+
+            mask = cv2.inRange(gray, 100, 255)
+            #plt.imshow(mask)
+            #plt.title(f'serial num roi maker - mask')
+            #plt.axis('off')
+            #plt.show()
+
+            mask_pil = Image.fromarray(mask)
+            inverted_mask_pil = ImageOps.invert(mask_pil)
+            #plt.imshow(inverted_mask_pil)
+            #plt.title(f'enhanced_image_pil')
+            #plt.axis('off')
+            #plt.show()
+
+            # Rotate if needed
+            rotated_image_pil = inverted_mask_pil.rotate(90, expand=True)
+            rotated_image = np.array(rotated_image_pil)
+            #plt.imshow(rotated_image_pil)
+            #plt.title(f'rotated_image_pil')
+            #plt.axis('off')
+            #plt.show()
+
+            # Draw a rectangle around the expected area
+            draw = ImageDraw.Draw(rotated_image_pil)
+            draw.rectangle([(3, 10), (95,45)], outline="black") #coordinates
+            #draw.rectangle([(0, 0), (85, 20)], fill="white") #coordinates
+
+            # 6. Perform OCR using Tesseract -c tessedit_char_whitelist=0123456789
+            custom_config = r'--oem 3 --psm 7 '
+            serial_num_tester = pytesseract.image_to_string(rotated_image_pil, config=custom_config)
+
+            print(f'Extracted Serial number: {serial_num_tester}')
+
+            #plt.imshow(rotated_image_pil)
+            #plt.title(f'serial num roi maker this is what is read:{serial_num_tester}')
+            #plt.axis('off')
+            #plt.show()
+
+            # Print extracted text
+            if not serial_num_tester.isdigit():
+                systemswarningslist[4] = 1
+
+            # Check if the model name already exists in the database
+            cursor.execute("SELECT COUNT(*) FROM HistoryDB WHERE num_série2 = ?", (serial_num_tester,))
+            count = cursor.fetchone()[0]
+
+            if count > 0:
+                systemswarningslist[5] = 1
+                print(f"Serial number '{serial_num_tester}' already exists in the database. Skipping insertion.")
+            else:
+                # Update the row in the database with the model name and diameter
+                cursor.execute("""
+                    UPDATE HistoryDB
+                    SET num_série2 = ?, Øobjetiva2 = ?, model2 = ?
+                    WHERE rowid = ?
+                """, (serial_num_tester, real_diameter_tester, model_name_tester, row_id))
+
+                conn2.commit()  # Commit the changes
+                print(
+                    f"Updated row {row_id} with serial number '{serial_num_tester}', model '{model_name_tester}' and diameter {real_diameter_tester}")
+
+        def contour_maker(contour_roi, template, min_contour_area, max_contour_area):
+
+            contour_roi_gray = cv2.cvtColor(contour_roi, cv2.COLOR_BGRA2GRAY)
+            #plt.imshow(contour_roi_gray)
+            #plt.title('contour_roi_gray')
+            #plt.axis('off')
+            #plt.show()
+
+            template_gray = cv2.cvtColor(template, cv2.COLOR_BGRA2GRAY)
+
+            # Resize template to match contour_roi dimensions if needed
+            if contour_roi_gray.shape != template_gray.shape:
+                template_gray_resized = cv2.resize(template_gray,
+                                                   (contour_roi_gray.shape[1], contour_roi_gray.shape[0]))
+            else:
+                template_gray_resized = template_gray
+
+            (score, diff) = structural_similarity(template_gray_resized, contour_roi_gray, full=True)
+            #print("Image Similarity: {:.4f}%".format(score * 100))
+
+            diff = (diff * 255).astype("uint8")
+            #plt.imshow(diff)
+            #plt.title('diff')
+            #plt.axis('off')
+            #plt.show()
+
+            mask = cv2.inRange(diff, 50, 110)
+            #plt.imshow(mask)
+            #plt.title('countour calibration: mask ')
+            #plt.axis('off')
+            #plt.show()
+
+            #dilated = cv2.dilate(mask, np.ones((3, 3), np.uint8), iterations=1)
+
+
+            #thresh = cv2.threshold(mask, 200, 255, cv2.THRESH_BINARY_INV)[1]
+            #plt.imshow(thresh)
+            #plt.title('countour calibration: thresh ')
+            #plt.axis('off')
+            #plt.show()
+
+            contours = cv2.findContours(mask.copy(), cv2.RETR_LIST, cv2.CHAIN_APPROX_NONE)
+            contours = contours[0] if len(contours) == 2 else contours[1]
+
+            pixel_size_of_defect = 0
+            # Filter contours by area
+            large_contours = [c for c in contours if cv2.contourArea(c) >= min_contour_area and cv2.contourArea(c) <= max_contour_area]
+
+            return large_contours
+            # Still missing everything that goes into non-conformity box and images with drawn defects
+
+        template_images = [im1_1, im2_1, im3_1, im4_1]
+
+        edited_tester_images = []
+        edited_tester_paths = []
+
+        matching_percentage_symbol = None
+        matching_percentage_sticker = None
+        nonconformity_text = None
+
+        for view in range(0,4):
+
+            tester0 = cv2.imread(tester_images[view])
+            template0 = cv2.imread(template_images[view])
+            template0_rgb = cv2.cvtColor(template0, cv2.COLOR_BGR2RGB)
+            #plt.imshow(template0_rgb)
+            #plt.title(f'this is {model_name_tester} template0')
+            #plt.axis('off')
+            #plt.show()
+
+            og_height, og_width = template0.shape[:2]
+            fith_of_width = og_width//5
+
+            tester1 = tester0[:, 670-137:850-137] #coordinates
+            template1 = template0[:, 670-137:850-137 ] #coordinates
+
+            y_lower = [None]*5  # coordinates
+            y_higher = [None]*5
+
+            plt.imshow(tester1)
+            plt.title('calibration of roi levels for each scope . STOP and check')
+            plt.axis('off')
+            plt.show()
+
+            if '56' in model_name_tester:
+                y_lower = [180, 530, 810, 1046, 1365] #coordinates
+                y_higher = [0, 180, 530, 810, 1245] #coordinates
+            if '50' in model_name_tester:
+                y_lower = [130, 490, 750, 1050, 1320, 1430] #coordinates 750-1300 is region of towers and support
+                y_higher = [0, 130, 490, 750, 1050, 1320] #coordinates
+            if '24' in model_name_tester:
+                y_lower = [200, 490, 750, 1050, 1320, 1430]  # coordinates 750-1300 is region of towers and support
+                y_higher = [0, 200, 490, 750, 1050, 1320]
+
+            for i in range(len(y_higher)):
+
+                top_y = y_higher[i]
+                bottom_y = y_lower[i]
+
+                roi_tester = tester1[top_y:bottom_y]
+                roi_template = template1[top_y:bottom_y]
+
+                roi_height, roi_width = roi_tester.shape[:2]
+                base_y_start = top_y
+
+                horizontal_slices = [(0, roi_height // 4),  # Top 1/4
+                                     (roi_height // 4, roi_height // 2),  # 2nd 1/4
+                                     (roi_height // 2, 3 * roi_height // 4),  # 3rd 1/4
+                                     (3 * roi_height // 4, roi_height)  # Bottom 1/4
+                                     ]
+
+                if view == 1:
+                    if i == 3:
+                        print('Template matching leica logo')
+
+                        og_height, og_width = template0.shape[:2]
+                        fith_of_width = og_width // 5
+
+                        roi_template = template0[y_higher[i]:y_lower[i],  670-137:850-137]
+                        roi_tester = tester0[y_higher[i]:y_lower[i],670-137:850-137]
+
+                        roi_template_gray = cv2.cvtColor(roi_template, cv2.COLOR_BGRA2GRAY)
+                        roi_tester_gray = cv2.cvtColor(roi_tester, cv2.COLOR_BGRA2GRAY)
+
+                        blurred_image = cv2.GaussianBlur(roi_template_gray, (3, 3), 2)
+                        #plt.imshow(roi_template_gray)
+                        #plt.title('roi template gray for leica symbol')
+                        #plt.axis('off')
+                        #plt.show()
+                        #plt.imshow(roi_tester_gray)
+                        #plt.title('roi tester gray for leica symbol')
+                        #plt.axis('off')
+                        #plt.show()
+
+                        # Use Hough Circle Transform to detect circles
+                        circles = cv2.HoughCircles(blurred_image, cv2.HOUGH_GRADIENT, dp=1.2, minDist=20, param1=50, param2=30, minRadius=30, maxRadius=45)
+
+                        if circles is not None:
+                            circles = np.round(circles[0, :]).astype("int")
+                            print('circles array',circles)
+
+                            # Create an alpha channel (transparency)
+                            alpha_channel = np.zeros(roi_template.shape[:2], dtype=np.uint8)
+
+
+                            # Draw the circles on the alpha channel
+                            for (x, y, radius) in circles:
+                                cv2.circle(alpha_channel, (x, y), radius, 255, thickness=cv2.FILLED)
+
+                            roi_template_rgba = cv2.merge((roi_template[:, :, :3], alpha_channel))
+
+                            # Apply the alpha channel as a mask
+                            mask = alpha_channel
+                            extracted_circle = cv2.bitwise_and(roi_template_rgba, roi_template_rgba, mask=mask)
+
+                            # Perform template matching
+                            extracted_circle_gray = cv2.cvtColor(extracted_circle, cv2.COLOR_RGBA2GRAY)
+                            result = cv2.matchTemplate(roi_tester_gray, extracted_circle_gray, cv2.TM_CCOEFF_NORMED)
+                            min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(result)
+                            matching_percentage_symbol = round((max_val * 100),2)
+
+                            top_left = max_loc
+                            h, w = extracted_circle.shape[:2]
+                            bottom_right = (top_left[0] + w, top_left[1] + h)
+                            print(f'TESTER IMAGES:{tester_images}, this is the view {view}')
+                            tester_4_symbol = cv2.imread(tester_images[view])
+                            roi_tester = tester_4_symbol[y_higher[i]:y_lower[i], 670-137:850-137]
+                            matched_image = roi_tester.copy()
+                            #plt.imshow(matched_image)
+                            #plt.title('matched image')
+                            #plt.axis('off')
+                            #plt.show()
+
+
+                            center = (top_left[0] + w // 2, top_left[1] + h // 2)
+                            print(center)
+                            radius = int(min(w, h) / 2)
+
+                            # Draw a circle at the location of the best match
+                            cv2.circle(matched_image, center, radius, (0, 0, 255), 2)  # Green circle with 2px thickness
+
+                            tester0[y_higher[i]:y_lower[i], 670-137:850-137] = matched_image
+                            print('matching percentage', matching_percentage_symbol)
+
+                            cv2.putText(tester0, f'Match: {matching_percentage_symbol:.2f}%',(center[0]+radius, center[1]+ y_higher[i]),cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
+
+                            print('max_val', max_val)
+
+                        else:
+                            print("No circles detected")
+                            matching_percentage_symbol = 'No Match'
+
+                if view == 2:
+                    if i ==3:
+                        print('Template matching of sticker in the back')
+                        og_height, og_width = template0.shape[:2]
+                        fith_of_width = og_width // 5
+
+                        roi_template = template0[y_higher[i]+50:y_lower[i], 670-137:850-137]
+                        roi_tester = tester0[y_higher[i]+50:y_lower[i], 670-137:850-137] #calibration of +50 to get better results
+                        roi_tester1 = roi_tester.copy()
+
+                        sticker = cv2.cvtColor(roi_template, cv2.COLOR_BGRA2GRAY)
+                        plt.imshow(sticker)
+                        plt.title(f'calibration for sticker: roi template gray on model {model_name_tester} - STOP AND CHECK COORDINATES')
+                        plt.axis('off')
+                        plt.show()
+
+                        roi_tester_gray = cv2.cvtColor(roi_tester, cv2.COLOR_BGRA2GRAY)
+
+
+                        result = cv2.matchTemplate(roi_tester_gray, sticker, cv2.TM_CCOEFF_NORMED)
+                        min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(result)
+                        matching_percentage_sticker = round((max_val * 100),2)
+
+                        # Define the rectangle coordinates
+                        h, w = sticker.shape  # Get height and width of the sticker
+                        top_left = max_loc
+                        bottom_right = (top_left[0] + w, top_left[1] + h)
+
+                        # Draw the rectangle on the original roi_tester
+                        cv2.rectangle(roi_tester1, top_left, bottom_right, (0, 0, 255),2)  # Blue rectangle with thickness 2
+                        tester0[y_higher[i]+50:y_lower[i], 670-137:850-137] = roi_tester1
+                        print('matching_percentage_sticker', matching_percentage_sticker)
+                        if matching_percentage_sticker >= 50:
+                            cv2.putText(tester0, f'Match: {matching_percentage_sticker:.2f}%', (top_left[0]+10, top_left[1]+ y_higher[i]),cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
+                        else:
+                            matching_percentage_sticker = 'Bad Match'
+                if i == 3:
+                    continue
+                if i == 4:
+                    continue
+                for idx, (y_start, y_end) in enumerate(horizontal_slices):
+
+                    roi_tester_slice = roi_tester[y_start:y_end, :]
+                    roi_template_slice = roi_template[y_start:y_end, :]
+
+                    large_contours = contour_maker(roi_tester_slice, roi_template_slice, 100, 1000)
+
+                    roi_tester_slice_copy = roi_tester_slice.copy()
+
+                    if len(large_contours) > 0:
+
+                        x_coordinates = [point[0][0] for contour in large_contours for point in contour]
+                        min_x = min(x_coordinates)
+                        max_x = max(x_coordinates)
+
+                        pixel_size_of_defect = max_x - min_x
+                        cv2.drawContours(roi_tester_slice_copy, large_contours, -1, (255, 0, 0, 255), 3)
+                        #plt.imshow(roi_tester_slice_copy)
+                        #plt.title(f'view {view} level {idx} roi_tester_slice_copy')
+                        #plt.axis('off')
+                        #plt.show()
+
+                        conversion_to_mm = 0
+                        width_for_cross = og_width // 9
+                        template0_copy = template0.copy()
+                        reference_measurements_img = None
+
+                        if view in [0,2]:
+                            reference_measurements_img = template0_copy[1100:1260,630-100:800-100]
+                            plt.imshow(reference_measurements_img)
+                            plt.title('calibration window - reference image of cross view [0,2]')
+                            plt.axis('off')
+                            plt.show()
+
+                            #plt.imshow(reference_measurements_img)
+                            #plt.title(f'view {view} reference_measurements_img')
+                            #plt.axis('off')
+                            #plt.show()
+
+                        if view == 1:
+                            reference_measurements_img = template0_copy[1100:1260,590-145:750-145]
+                            plt.imshow(reference_measurements_img)
+                            plt.title('calibration window - reference image of cross view 1 ')
+                            plt.axis('off')
+                            plt.show()
+                            #plt.imshow(reference_measurements_img)
+                            #plt.title(f'view {view} reference_measurements_img')
+                            #plt.axis('off')
+                            #plt.show()
+
+                        if view == 3:
+                            reference_measurements_img = template0_copy[1100:1260,870-190:1000-190]
+                            plt.imshow(reference_measurements_img)
+                            plt.title('calibration window - reference image of cross ')
+                            plt.axis('off')
+                            plt.show()
+                            #plt.imshow(reference_measurements_img)
+                            #plt.title(f'view {view} reference_measurements_img')
+                            #plt.axis('off')
+                            #plt.show()
+
+                        edges = cv2.Canny(reference_measurements_img, 0, 150, apertureSize=3)
+                        contours, _ = cv2.findContours(edges, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
+
+                        if contours:
+                            x_coordinates = [point[0][0] for contour in contours for point in contour]
+                            min_x_cross = min(x_coordinates)
+                            max_x_cross = max(x_coordinates)
+
+                            reference = max_x_cross - min_x_cross
+                            conversion_to_mm = 15 / reference
+                            print('conversion_to_mm:', conversion_to_mm)
+
+                        real_size = round((pixel_size_of_defect * conversion_to_mm), 2)
+
+                        overlay_height, overlay_width = roi_tester_slice_copy.shape[:2]
+
+                        adjusted_y_start = base_y_start + y_start
+                        adjusted_y_end = adjusted_y_start + overlay_height
+
+                        tester1[adjusted_y_start:adjusted_y_end, 0:overlay_width] = roi_tester_slice_copy #placing roi_tester_slice_copy into tester1
+
+                        tester0[0:og_height, 670-137:850-137] = tester1
+
+                        cv2.putText(tester0, f'{real_size} mm', (max_x+(2 * fith_of_width)+50, adjusted_y_start + 20),cv2.FONT_HERSHEY_PLAIN, 2, (0, 255, 0), 2)
+
+                        print('pixel_size_of_defect', pixel_size_of_defect)
+
+            nonconformity_text  = (f'Leica symbol match result {matching_percentage_symbol}%;  Sticker match result: {matching_percentage_sticker}%;')
+            edited_tester_images.append(tester0.copy())
+
+        for i, path in enumerate(tester_images):
+            if path.endswith(".png"):  # Ensure it ends with .png
+                edited_path = path[:-4] + "_edited.png"  # Remove .png and add _edited.png
+                edited_tester_paths.append(edited_path)
+                # Save the corresponding image from edited_tester_imagesDiameter:
+                cv2.imwrite(edited_path, edited_tester_images[i])
+
+        try:
+            # Step 1: Connect to the database
+            conn = sqlite3.connect("history_database.db")
+            cursor = conn.cursor()
+
+            # Step 2: Prepare the UPDATE statement
+            update_query = """
+                UPDATE HistoryDB 
+                SET im1_2e = ?, im2_2e = ?, im3_2e = ?, im4_2e = ?, nonconformity = ? 
+                WHERE rowid = ?;
+            """
+
+            # Step 3: Execute the UPDATE statement
+            cursor.execute(update_query, (*edited_tester_paths, nonconformity_text, row_id))
+
+            # Step 4: Commit the changes
+            conn.commit()
+            print("Data updated successfully.")
+        except sqlite3.Error as e:
+            print(f"An error occurred: {e}")
+        print('systemswarningslist1', systemswarningslist)
+
+    except sqlite3.Error as e:
+        print(e, 'error')
+
+    finally:
+        if conn2:
+            conn2.close()
+        if conn1:
+            conn1.close()  # Ensure conn1 is closed if it was opened
+
+    return systemswarningslist
