@@ -1,0 +1,951 @@
+global entry_user_id_var, enter_button
+
+def go_to_new_page():
+    num_série2 = 'brrr'
+    global video_label
+    global video_frame
+    global camera
+
+    def create_connection1(db_file1):
+        """ Create a database connection to the SQLite database specified by db_file """
+        conn1 = None
+        try:
+            conn1 = sqlite3.connect(db_file1)
+            print(f"SQLite Database '{db_file1}' created and connected successfully.")
+
+        except sqlite3.Error as e:
+            print(e, 'error')
+        return conn1
+    def create_table1(conn1):
+
+        # 1 - TemplateDB (model  - im1T - im2 - im3T - im4 - Øobjetiva) ~~~implica que im1T,2,3,4 indiquem a localização da foto
+
+        """ Create a table in the database """
+        create_table_sql1 = """CREATE TABLE IF NOT EXISTS TemplateDB (
+           model1 text, 
+           Øobjetiva1 integer, 
+           im1_1 text, 
+           im2_1 text, 
+           im3_1 text, 
+           im4_1 text);"""
+
+        try:
+            cursor = conn1.cursor()
+            cursor.execute(create_table_sql1)
+            print("Table 'TemplateDB' created successfully.")
+        except sqlite3.Error as e:
+            print(e)
+    def insert_templatedb(conn1, model1, Øobjetiva1, im1_1, im2_1, im3_1, im4_1):
+        """ Insert a new template into the template table """
+        try:
+            cursor = conn1.cursor()
+            cursor.execute("INSERT INTO TemplateDB VALUES (?, ?, ?, ?, ?, ?)",
+                           (model1, Øobjetiva1, im1_1, im2_1, im3_1, im4_1))
+            conn1.commit()
+            # print(f"new template '{template[0]}' inserted successfully.")
+        except sqlite3.Error as e:
+            print(e)
+    def add_template():
+        selected_value = radio_var.get()
+        print(f"Selected option for analysis: {selected_value}")
+        template_db = "template_database.db"
+        conn1 = create_connection1(template_db)
+
+        if conn1 is not None:
+
+            # Create users table
+            create_table1(conn1)
+            # Insert data
+
+            image_folder = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'AA_CAMERA\\')
+
+            files = [os.path.join(image_folder, f) for f in os.listdir(image_folder) if
+                     os.path.isfile(os.path.join(image_folder, f))]
+            files.sort(key=os.path.getmtime, reverse=False)
+
+            im1_1 = files[0]
+            im2_1 = files[1]
+            im3_1 = files[2]
+            im4_1 = files[3]
+
+            Øobjetiva1 = 5
+
+            model1 = 'model name'
+
+            cursor = conn1.cursor()
+            cursor.execute("SELECT model1 FROM TemplateDB")
+            all_models = cursor.fetchall()
+            model_exists = False
+
+            for row in all_models:
+                if model1 == row[0]:
+                    print(f"Model{model1}is already in the database.")
+                    model_exists = True
+                    break
+
+
+        else:
+            print("Error! Cannot create the database connection.")
+
+        return conn1
+
+    def create_table2(conn2):
+
+        # 2 - HistoryDB (operador - data - hora - model  - im1T - im2 - im3 - im4 - Øobjetiva - #série) ~~~get position of im in table in case
+        create_table_sql2 = """CREATE TABLE IF NOT EXISTS HistoryDB (
+        operador2 text, 
+        data2 text, 
+        hora2 text, 
+        model2 text, 
+        im1_2 text, 
+        im2_2 text, 
+        im3_2 text, 
+        im4_2 text,
+        im1_2e text, 
+        im2_2e text, 
+        im3_2e text, 
+        im4_2e text, 
+        Øobjetiva2 integer, 
+        num_série2 text,
+        nonconformity text
+        );"""
+        try:
+            cursor = conn2.cursor()
+            cursor.execute(create_table_sql2)
+            print("Table 'HistoryDB' created successfully.")
+        except sqlite3.Error as e:
+            print(e)
+    def insert_historydb(conn2, operador2, data2, hora2, model2, im1_2, im2_2, im3_2, im4_2, im1_2e, im2_2e, im3_2e, im4_2e, Øobjetiva2, num_série2, nonconformity):
+        """ Insert a new template into the template table """
+        try:
+            cursor = conn2.cursor()
+            cursor.execute("INSERT INTO HistoryDB VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                           (operador2, data2, hora2, model2, im1_2, im2_2, im3_2, im4_2, im1_2e, im2_2e, im3_2e, im4_2e, Øobjetiva2, num_série2, nonconformity))
+            conn2.commit()
+
+        except sqlite3.Error as e:
+            print(e)
+    def new_analysis():
+        print('new_analysis()')
+        selected_value = radio_var.get()
+        print(f" Selected option for analysis: {selected_value}")
+
+        conn2 = None
+        try:
+            db_file2 = "history_database.db"
+            conn2 = sqlite3.connect(db_file2)
+            print(f"SQLite Database '{db_file2}' created and connected successfully.")
+        except sqlite3.Error as e:
+            print(e, 'error')
+
+        if conn2 is not None:
+
+            # Create users table
+            create_table2(conn2)
+            # Insert users
+            operador2 = 'username'
+
+            hora2 = current_time
+
+            image_folder = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'AA_CAMERA\\')
+
+            files = [os.path.join(image_folder, f) for f in os.listdir(image_folder) if
+                     os.path.isfile(os.path.join(image_folder, f))]
+            files.sort(key=os.path.getmtime, reverse=False)
+
+            im1_2 = files[0]
+            im2_2 = files[1]
+            im3_2 = files[2]
+            im4_2 = files[3]
+
+
+            model2 = 'model name'
+            cursor = conn2.cursor()
+
+            cursor.execute("SELECT num_série2 FROM HistoryDB")
+            all_entries = cursor.fetchall()
+            serial_number_exists = False
+            print('all_entries', all_entries)
+
+            for row in all_entries:
+
+                if num_série2 == row[0]:
+                    print(f"Serial Number {num_série2} is already in the database. This product has been analyzed before")
+                    serial_number_exists = True
+                    break
+
+            # search for variable "model2" in template data base's variable "model1"
+            template_db = "template_database.db"
+
+            conn1 = create_connection1(template_db)
+            cursor = conn1.cursor()
+            query = f"SELECT * FROM TemplateDB WHERE model1 LIKE ?"
+            params = (f'%{model2}%',)
+            cursor.execute(query, params)
+            rows = cursor.fetchall()
+
+
+
+            cursor.close()
+            conn1.close()
+
+            if not serial_number_exists: #we are able to start the image analysis because we are analysing a new product
+                #messagebox.showinfo("info", f"New serial number {num_série2} added")
+                Øobjetiva2 = 4
+                nonconformity = 'text to show nonconformity if yes'
+
+
+
+            conn2.close()
+
+        else:
+            print("Error! Cannot create the database connection.")
+
+    def initialize_camera():
+        print('Initializing camera')
+        global camera, camera_available
+        try:
+
+            camera = pylon.InstantCamera(pylon.TlFactory.GetInstance().CreateFirstDevice())
+            camera.Open()
+            camera.PixelFormat.SetValue("RGB8")
+            camera.StartGrabbing(pylon.GrabStrategy_LatestImageOnly)
+            camera_available = True
+            return camera
+        except Exception as e:
+            print("No camera found:", e)
+            camera = None
+            camera_available = False
+            return None
+
+    def release_camera():
+        """Releases the camera and cleans up resources."""
+        global camera
+        if camera is not None:
+            if camera.IsGrabbing():
+                camera.StopGrabbing()  # Stop grabbing images
+            camera.Close()  # Close the camera connection
+            camera = None
+            print("Camera released.")
+
+    def show_frame():
+        #print('entered show frame')
+        global current_frame, capturing_images
+        global video_label
+        global video_frame
+        global camera
+        capturing_images = True
+
+        if camera is None or not camera.IsGrabbing():
+            print("Camera is not available, trying to reinitialize.")
+            initialize_camera()  # Try to reinitialize the camera
+        if camera is not None and camera.IsGrabbing():
+            try:
+                grab_result = camera.RetrieveResult(5000, pylon.TimeoutHandling_ThrowException)
+                if grab_result.GrabSucceeded():
+                    image = grab_result.Array
+                    frame = cv2.rotate(image, cv2.ROTATE_90_CLOCKWISE)
+
+                    current_frame = frame
+
+                    height, width, _ = frame.shape
+                    desired_width, desired_height = 640+0.4*640, 480+0.4*480  # Set your desired width and height here
+
+                    # Calculate the scaling factor to maintain aspect ratio
+                    scaling_factor = min(desired_width / width, desired_height / height)
+                    new_size = (int(width * scaling_factor), int(height * scaling_factor))
+
+                    # Resize the frame
+                    frame_resized = cv2.resize(frame, new_size)
+                    # Convert the frame to ImageTk format for display
+                    img = Image.fromarray(frame_resized)
+                    imgtk = ImageTk.PhotoImage(image=img)
+                    #video_label.imgtk = imgtk
+
+                    #video_label.configure(image=imgtk)
+
+                    # Ensure video_label is valid before configuring
+                    if 'video_label' in globals() and video_label.winfo_exists():
+                        video_label.imgtk = imgtk
+                        video_label.configure(image=imgtk)
+
+                grab_result.Release()
+            except Exception as e:
+                print("Error during frame retrieval:", e)
+        else:
+            print('not showing frame because there is no camera available')
+        root.after(5, show_frame)  # Schedule the next frame update SHALL BE
+
+    def start_capture():
+        print('entered start capture')
+
+        global video_label, video_frame, current_index
+        nonlocal num_série2
+
+        def send_serial_command(command, port='COM6', baudrate=9600, timeout=1):
+            try:
+                ser = serial.Serial(port, baudrate)
+                time.sleep(2)
+                ser.write(command.encode())
+                print('serial read do homing:', ser.readline().decode() )
+                time.sleep(2)
+                ser.close()
+            except serial.SerialException as e:
+                print(f"Serial connection error: {e}")
+                print('serial command Homing us being sent!!')
+        send_serial_command('H')
+        time.sleep(1)
+
+        current_index = 0
+
+        radius = 45
+        x = screen_width - radius - 150  # X position for the circle
+        y = screen_height - radius - 150  # Y position for the circle
+
+        # Draw the red circle
+        signout_button_area = canvas.create_oval(x, y, x + radius * 2, y + radius * 2, fill='#E20612',outline='#E20612')
+
+        text_x = x + radius  # Centered X position
+        text_y = y + radius  # Centered Y position
+
+        image_paths = [None] * 4
+
+        # Store canvas item IDs and widget references to delete later
+        canvas_items = []  # For items created on the canvas
+        widget_references = []  # For Label, Button, etc.
+
+        for k in range(4):
+            def on_signout_click(event):
+
+                print("Sign out button clicked!")
+
+                root.destroy() #after this nothing happens
+
+                # Delete the capture-related canvas items and widgets
+                for item in canvas_items:
+                    canvas.delete(item)  # Delete each canvas item
+
+                for widget in widget_references:
+                    widget.destroy()  # Destroy each widget (e.g., Label)
+
+                canvas.delete("all")
+
+                # Rebuild the original main window (background, inputs, etc.)
+                canvas.create_image(0, 0, image=background_photo1, anchor="nw")
+                canvas.create_image(10, 0, image=icon_photo, anchor="nw")
+
+                canvas.create_text(130, 50, text="Visual Inspection Mechanism", fill="white",
+                                   font=("LG1052", 16, 'bold'), anchor="w")
+
+                # Add user input and buttons again
+                canvas.create_text(700, 300, text="Add User ID", fill="white", font=("LG1052", 14, 'bold'), anchor='nw')
+
+                # Create a StringVar to track the user input
+                #global entry_user_id_var, enter_button
+                entry_user_id_var = tk.StringVar()
+
+                # This line attaches the function to monitor changes in the entry_user_id_var
+                entry_user_id_var.trace_add("write", lambda *args: (enter_button.config(state="normal") if entry_user_id_var.get().strip() else enter_button.config(state="disabled")))
+
+                # Update the entry widget to use the new StringVar
+                entry_user_id.config(textvariable=entry_user_id_var)
+
+                # Create the entry box on the canvas
+                canvas.create_window(770, 350, window=entry_user_id)
+
+                # Create the Enter button, initially disabled
+                enter_button = tk.Button(root, text="Enter", command=go_to_new_page, font=("LG1052", 14, "bold"),
+                                         state="disabled")
+
+                # Place the button on the canvas
+                canvas.create_window(770, 400, window=enter_button)
+
+                root.update()
+
+            print(k)
+            start.config(state="disabled")
+
+            # Countdown logic
+            for i in range(5, 0, -1):
+                countdown_text = canvas.create_text(text_x, text_y, text=str(f'{i}'), fill='white', font=("LG1052", 50, 'bold'))
+                root.update()
+                canvas.delete(countdown_text)
+                time.sleep(1)
+
+
+            if camera_available:
+                print(f'CAMERA AVAILABLE - Capturing image {k + 1}')
+                # Simulate camera capture delay
+
+                # Save the current frame if it's available
+                if current_frame is not None:
+
+                    current_datetime = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+                    image_folder = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'AA_CAMERA\\')
+                    os.makedirs(image_folder, exist_ok=True)
+                    frame_rgb = cv2.cvtColor(current_frame, cv2.COLOR_BGR2RGB)
+                    image_path = os.path.join(image_folder, f"{current_datetime}.png")
+                    cv2.imwrite(image_path, frame_rgb)  # Save the current frame
+                    print(f"Image saved: {image_path}")
+                    print('len(image_paths)',len(image_paths))
+                    image_paths[k] = image_path
+                    time.sleep(1)
+                else:
+                    print("No frame available to save.")
+            else:
+                print(f"No camera available. Skipping image {k + 1}")
+
+            if k == 3:
+
+                if 'video_label' in globals() and video_label.winfo_exists():
+                    print('FORGETTING video_label.winfo_exists()')
+                    video_label.pack_forget()
+                if 'video_frame' in globals() and video_frame.winfo_exists():
+                    print('FORGETTING video_frame in globals() and video_frame.winfo_exists()')
+                    video_frame.destroy()  # Hides the video frame
+
+                # Draw the refresh button and icon on the canvas
+                signout_button_area = canvas.create_oval(x, y, x + radius * 2, y + radius * 2, fill='#E20612',outline='#E20612')
+                canvas_items.append(signout_button_area)  # Track canvas item ID
+
+                sign_out_icon = icon_to_image('sign-out-alt', fill="#f0f0f0", scale_to_width=40)
+                sign_out_label = tk.Label(canvas, image=sign_out_icon, bg='#E20612')
+                canvas.create_window(x + radius, y + radius, window=sign_out_label)
+                sign_out_label.image = sign_out_icon
+
+                widget_references.append(sign_out_label)  # Track widget reference
+
+                next_img_button_area = canvas.create_oval(x-120, y, x-120 + radius * 2, y + radius * 2, fill='#E20612',outline='#E20612')
+                next_icon = icon_to_image('chevron-right', fill="#f0f0f0", scale_to_width=35)
+                next_label = tk.Label(canvas, image=next_icon, bg='#E20612')
+                canvas.create_window(x-112 + radius, y + radius, window=next_label)
+                next_label.image = next_icon
+
+                previous_img_button_area = canvas.create_oval(x - 250, y, x-250 + radius * 2, y + radius * 2,fill='#E20612', outline='#E20612')
+                previous_icon = icon_to_image('chevron-left', fill="#f0f0f0", scale_to_width=35)
+                previous_label = tk.Label(canvas, image=previous_icon, bg='#E20612')
+                canvas.create_window(x-260 + radius, y + radius, window=previous_label)
+                previous_label.image = previous_icon
+
+                # Bind the button click event to restart the capture
+                canvas.tag_bind(signout_button_area, '<Button-1>', on_signout_click)
+                canvas.tag_bind(next_img_button_area, '<Button-1>', on_next_click)
+                canvas.tag_bind(previous_img_button_area, '<Button-1>', on_previous_click)
+
+                selected_value = radio_var.get()
+
+                print('yello')
+
+                if selected_value == 'New_analysis':
+
+                    time.sleep(1)
+                    print('entrou em new_analysis')
+                    current_datetime = datetime.now()
+                    current_date = current_datetime.strftime("%Y-%m-%d")
+                    current_time = current_datetime.strftime("%H:%M:%S")
+                    model2 = None
+                    Øobjetiva2 = None
+                    num_série2 = None
+                    nonconformity = None
+                    print(image_paths)
+                    insert_historydb(conn2=sqlite3.connect("history_database.db"),data2=current_date,operador2=user_id,hora2=current_time,model2=None,
+                                     im1_2=image_paths[0],im2_2=image_paths[1],im3_2=image_paths[2],im4_2=image_paths[3],
+                                     im1_2e='',im2_2e='',im3_2e='',im4_2e='',
+                                     Øobjetiva2=None,num_série2=None,nonconformity=None)
+                    time.sleep(2)
+
+                    tester_analysis() #this fucntion is called to add the rest of the info to the db ,
+                    # 1st -  Øobjetiva2,num_série2 - easy info
+                    #2nd - im1_2e='',im2_2e='',im3_2e='',im4_2e='' -> previous tester images with edits to highlight defects -> these are the images that will be used for display
+
+                    #FIGURE OUT A  WAY TO CALL HISTORYDB AND GET THE INFO FROM 5-8 INTO AN ARRAY TO BE DISPLAYED
+                    conn = sqlite3.connect("history_database.db")
+                    cursor = conn.cursor()
+
+                    try:
+                        # Assuming your table is named 'HistoryDB', and it has an 'id' column to identify rows
+                        cursor.execute(
+                            "SELECT model2, Øobjetiva2, num_série2, nonconformity FROM HistoryDB ORDER BY rowid DESC LIMIT 1;")
+
+                        # Fetch the last row
+                        last_row = cursor.fetchone()
+                        print(f"Fetched data: {last_row}")
+
+                        if last_row is not None:
+                            # Unpack the data from the tuple
+                            model2, Øobjetiva2, num_série2, nonconformity = last_row
+                            print('non conformityy',nonconformity)
+                            print('Øobjetiva2',Øobjetiva2)
+                        else:
+                            print("No data found in HistoryDB")
+                            return None
+                    except sqlite3.Error as e:
+                        print("An error occurred:", e)
+                        return None
+
+                    print('non conformityy2', nonconformity)
+
+                    user_id_text = canvas.create_text(110, 340, text=user_id, fill="black", font=("LG1052", 14), anchor='w')
+                    current_time_text = canvas.create_text(110, 410, text=current_time, fill="black", font=("LG1052", 14), anchor='w')
+                    canvas_items.append(current_time_text)
+                    if num_série2:
+                        serial_number_text = canvas.create_text(110, 480, text=num_série2, fill="black",font=("LG1052", 14), anchor='w')
+                        canvas_items.append(serial_number_text)
+
+                    if model2:
+                        model_name_text = canvas.create_text(110, 550, text=model2, fill="black", font=("LG1052", 14),anchor='w')
+                        canvas_items.append(model_name_text)
+
+                    if nonconformity:
+                        wrapped_text = []
+                        current_line = ''
+
+                        # Split text into words
+                        words = nonconformity.split()
+
+                        # Use canvas method to measure text width dynamically
+                        for word in words:
+                            if font.Font(family="LG1052", size=12).measure(current_line + ' ' + word) < 240:
+                                current_line += ' ' + word
+                            else:
+                                wrapped_text.append(current_line.strip())
+                                current_line = word
+                        wrapped_text.append(current_line.strip())  # Add last line
+
+                        # Create the text lines on the canvas inside the rectangle
+                        for i, line in enumerate(wrapped_text):
+                            nonconformity_notes = canvas.create_text(110, 620 + (i * 20), text=line, fill="black", font=("LG1052", 12), anchor='nw')
+
+                            canvas_items.append(nonconformity_notes)
+                    systemswarningslist =  tester_analysis()
+
+                    if 1 in systemswarningslist:
+                        if systemswarningslist[0] == 1:
+                            messagebox.showwarning("System Warning", "Model Name from tester was not read properly.")
+                        if systemswarningslist[1] == 1:
+                            messagebox.showwarning("System Warning", "Model Name from tester is not part of the Magnus line.")
+                        if systemswarningslist[2] == 1:
+                            messagebox.showwarning("System Warning", "Rifle Scope Objective diameter does not match with expected value")
+                        if systemswarningslist[3] == 1:
+                            messagebox.showwarning('System Warning', 'Could not find Model on the Database, please add it.')
+                        if systemswarningslist[4] == 1:
+                            messagebox.showwarning('System Warning', 'Serial number read incorrectly')
+                        if systemswarningslist[5] == 1:
+                            messagebox.showwarning('System Warning', 'Serial number already in database')
+
+                elif selected_value == 'Add_template':
+                    model_name1 = ''
+                    Øobjetiva_number1 = ''
+
+
+
+                    insert_templatedb(conn1=create_connection1(db_file1="template_database.db"),
+                                      model1=None,
+                                      Øobjetiva1=None,
+                                      im1_1=image_paths[0],
+                                      im2_1=image_paths[1],
+                                      im3_1=image_paths[2],
+                                      im4_1=image_paths[3])
+                    time.sleep(2)
+
+                    template_db_prepping()
+
+            def display_image(index):
+                conn = sqlite3.connect("history_database.db")
+                cursor = conn.cursor()
+
+                # Get the row with the maximum rowid, which should be the last inserted row
+                cursor.execute("""
+                    SELECT im1_2e, im2_2e, im3_2e, im4_2e
+                    FROM HistoryDB
+                    ORDER BY rowid DESC 
+                    LIMIT 1;
+                """)
+                image_paths = cursor.fetchone()
+
+                if image_paths:
+
+                    # Convert the tuple to a list (optional)
+                    image_paths_list = list(image_paths)
+                    print('image_paths_list from display_images()', image_paths_list)
+                    # Ensure the index is within the bounds of the image paths array
+                    if 0 <= index < len(image_paths_list):
+                        # Access the correct image path
+                        selected_image_path = image_paths_list[index]
+
+                        # Read the image using OpenCV
+                        image_bgr = cv2.imread(selected_image_path)
+
+                        if image_bgr is not None:
+                            # Convert the image from BGR to RGB for display
+                            image_rgb = cv2.cvtColor(image_bgr, cv2.COLOR_BGR2RGB)
+
+                            # Convert the NumPy array to a PIL Image
+                            image_display = Image.fromarray(image_rgb)
+
+                            # Get dimensions for resizing
+                            width, height = image_display.size  # Fixed width and height order
+                            print(f'width: {width}, height: {height}')
+
+                            # Resize the image (keeping aspect ratio)
+                            new_size = (int(width / 3), int(height / 3))  # Fixed order for resizing
+                            print(f'Resized dimensions: {new_size}')
+                            image_display_resized = image_display.resize(new_size, Image.LANCZOS)
+
+                            # Convert the resized image to ImageTk format for display
+                            image_display_resized_tk = ImageTk.PhotoImage(image=image_display_resized)
+
+                            # Keep reference to avoid garbage collection
+                            canvas.image_reference = image_display_resized_tk
+
+                            # Clear previous image and display the new image
+                            canvas.delete('overlay')  # Clear existing overlay if any
+                            canvas.create_image(500, 150, anchor='nw', image=image_display_resized_tk, tags='overlay')
+                            canvas.tag_raise('overlay')
+                        else:
+                            print(f"Error: Could not load image at path {selected_image_path}")
+                    else:
+                        print(f"Error: Index {index} out of bounds for image paths list")
+                else:
+                    print("Error: No image paths found in the database")
+
+                # Close the connection
+                conn.close()
+
+            def send_serial_command(command, port='COM6', baudrate=9600, timeout=1):
+                try:
+                    ser = serial.Serial(port, baudrate, timeout=timeout)
+                    ser.write(command.encode())  # Send the command
+                    print("serial out turning last: ", ser.readline().decode())
+                    # Wait for the Arduino to execute the command
+                    ser.close()  # Close the serial connection
+                except serial.SerialException as e:
+                    print(f"Serial connection error: {e}")
+
+            def on_next_click(event):
+                global current_index, view_label_text
+                print('click click mf')
+                send_serial_command('T')
+
+                if current_index < len(image_paths) - 1:
+                    # Increment the index if we're not at the last image
+                    current_index += 1
+                    print(f'Next image, index: {current_index}')
+                    display_image(current_index)
+
+                    # Re-enable the "Previous" button if we're not at the first image
+                    if current_index > 0:
+                        canvas.tag_bind(previous_img_button_area, '<Button-1>', on_previous_click)
+                else:
+                    # If we're already on the last image, show a warning
+                    messagebox.showwarning("System Warning", "You are already viewing the last image.")
+                    print('Warning: Already at the last image.')
+
+
+                view_label_text = f"View {current_index + 1}"  # Display view number (1-based index)
+                canvas.delete('view_label')  # Remove any previous label
+                canvas.create_text(1400, 170, text=view_label_text, fill="white", font=("LG1052", 24), tags='view_label')
+
+                display_image(current_index)
+
+            def on_previous_click(event):
+                global current_index, view_label_text
+                print('click click mf')
+                send_serial_command('L')
+
+                if current_index > 0:
+                    # Decrement the index if we're not at the first image
+                    current_index -= 1
+                    print(f'Previous image, index: {current_index}')
+                    display_image(current_index)
+
+                    # Re-enable the "Next" button if we're not at the last image
+                    if current_index < len(image_paths) - 1:
+                        canvas.tag_bind(next_img_button_area, '<Button-1>', on_next_click)
+                else:
+                    # If we're already at the first image, show a warning
+                    messagebox.showwarning("System Warning", "You are already viewing the first image.")
+                    print('Warning: Already at the first image.')
+
+                view_label_text = f"View {current_index + 1}"  # Display view number (1-based index)
+                canvas.delete('view_label')  # Remove any previous label
+                canvas.create_text(1400, 170, text=view_label_text, fill="white", font=("LG1052", 24), tags='view_label')
+
+                display_image(current_index)
+
+            # Display the first image initially
+            current_index = 0
+            display_image(current_index)
+            # Initially bind the events for both buttons
+
+            print(f'serial command Turn right is being sent')
+            send_serial_command('T')
+
+    def create_rounded_rectangle_type1(canvas, x1, y1, x2, y2, radius=20, fill="white", outline="", width=2):
+        """ Draw a completely filled rounded rectangle on a Tkinter Canvas """
+
+        canvas.create_arc(x1, y1, x1 + 2 * radius, y2, start=90, extent=180, fill=fill, outline=outline, width=width)
+        canvas.create_arc(x2 - 2 * radius, y1, x2, y2, start=270, extent=180, fill=fill, outline=outline, width=width)
+
+        # Draw the connecting top and bottom rectangles (without arcs)
+        canvas.create_line(x1 + radius, y1, x2 - radius, y1, fill=fill, width=width)  # Top side
+        canvas.create_line(x1 + radius, y2, x2 - radius, y2, fill=fill, width=width)  # Bottom side
+
+        # Draw the vertical lines between the arcs
+        canvas.create_line(x1, y1 + radius, x1, y2 - radius, fill=fill, width=width)  # Left side
+        canvas.create_line(x2, y1 + radius, x2, y2 - radius, fill=fill, width=width)
+
+        # Fill in the middle rectangle
+        canvas.create_rectangle(x1 + radius, y1, x2 - radius, y2, fill=fill, outline=outline, width=width)
+    def create_rounded_rectangle_type2(canvas, x1, y1, x2, y2, radius=30, fill="white", outline='', width=2):
+        """ Draw a completely filled rounded rectangle on a Tkinter Canvas """
+
+        # Draw filled arcs for the rounded corners
+        canvas.create_arc(x1, y1, x1 + 2 * radius, y1 + 2 * radius, start=90, extent=90, fill=fill, outline=outline,
+                          width=width)  # Top-left
+        canvas.create_arc(x2 - 2 * radius, y1, x2, y1 + 2 * radius, start=0, extent=90, fill=fill, outline=outline,
+                          width=width)  # Top-right
+        canvas.create_arc(x2 - 2 * radius, y2 - 2 * radius, x2, y2, start=270, extent=90, fill=fill, outline=outline,
+                          width=width)  # Bottom-right
+        canvas.create_arc(x1, y2 - 2 * radius, x1 + 2 * radius, y2, start=180, extent=90, fill=fill, outline=outline,
+                          width=width)  # Bottom-left
+
+        # Fill in the middle rectangle
+        canvas.create_rectangle(x1 + radius, y1, x2 - radius, y2, fill=fill, outline=outline, width=width)
+
+        # Fill in the four side rectangles (connecting arcs to the middle rectangle)
+        canvas.create_rectangle(x1, y1 + radius, x1 + radius, y2 - radius, fill=fill, outline=outline,
+                                width=width)  # Left side
+        canvas.create_rectangle(x2 - radius, y1 + radius, x2, y2 - radius, fill=fill, outline=outline,
+                                width=width)  # Right side
+        canvas.create_rectangle(x1 + radius, y1, x2 - radius, y1 + radius, fill=fill, outline=outline,
+                                width=width)  # Top side
+        canvas.create_rectangle(x1 + radius, y2 - radius, x2 - radius, y2, fill=fill, outline=outline,
+                                width=width)  # Bottom side
+
+    def update_button_state(*args):
+        # Enable the start button if any radio button is selected
+        if radio_var.get() != "":
+            start.config(state=tk.NORMAL)  # Enable the button
+        else:
+            start.config(state=tk.DISABLED)
+
+    print('Going to new page')
+    canvas.delete("all")  # Clear the canvas
+
+    # Load and resize the new background image
+    background_image2 = Image.open(r"C:\Users\rbaptista\PycharmProjects\pythonProject1\images for program\leica_product_registration_3840x1780_hero_teaser_image_new.jpg").convert('RGBA')
+
+    screen_width = root.winfo_screenwidth()
+    screen_height = root.winfo_screenheight()
+    resized_bg2 = background_image2.resize((screen_width, screen_height), Image.LANCZOS)
+
+    # Create a transparent overlay rectangle
+    x2 = 50
+    y2 = 90
+    rect_width2 = 1500
+    rect_height2 = 750
+    alpha2 = 200
+    overlay = Image.new("RGBA", resized_bg2.size, (0, 0, 0, 0))
+    draw = ImageDraw.Draw(overlay)
+    rect_color = (0, 0, 0, alpha2)
+    draw.rectangle([x2, y2, x2 + rect_width2, y2 + rect_height2], fill=rect_color)
+    #draw.rectangle([x2+100, y2, rect_width2+600, y2+rect_height2], fill=rect_color)
+    # Combine the rectangle with the new image
+    image_with_rectangle2 = Image.alpha_composite(resized_bg2, overlay)
+
+    # Add rounded corners directly to the new page
+    rounded_mask = Image.new("L", image_with_rectangle2.size, 0)
+    draw = ImageDraw.Draw(rounded_mask)
+    draw.rounded_rectangle((0, 0, screen_width, screen_height), radius=40, fill=255)
+
+    image_with_corners2 = image_with_rectangle2.copy()
+    image_with_corners2.putalpha(rounded_mask)
+
+    # Convert to PhotoImage and keep a reference to prevent garbage collection
+    rectangle_photo = ImageTk.PhotoImage(image_with_corners2)
+    canvas.create_image(0, 0, image=rectangle_photo, anchor="nw")
+    canvas.image = rectangle_photo  # Keep reference
+
+    # Get the entered User ID
+    user_id = entry_user_id.get()
+
+    #print(f"User ID entered: {user_id}")  # Save or use the User ID as needed
+
+    # Show new content (New Page)
+    canvas.create_text(170, 140, text=f"Welcome, {user_id}!", fill="white", font=("LG1052", 14))
+
+
+
+
+    def on_radio_select():
+        selected_value = radio_var.get()  # Get the currently selected value
+        if selected_value == "New_analysis":
+            radio_button2.config(state=tk.DISABLED)  # Disable the second button
+            radio_button1.config(state=tk.NORMAL)  # Ensure the first button is enabled
+            new_analysis()
+        elif selected_value == "Add_template":
+            radio_button1.config(state=tk.DISABLED)  # Disable the first button
+            radio_button2.config(state=tk.NORMAL)
+            add_template()
+
+    radio_var = tk.StringVar(value="")
+    tk.Radiobutton()
+    # Create two radio buttons
+    radio_button1 = tk.Radiobutton(canvas, text="Start Analysis", command=on_radio_select, variable=radio_var,
+                                   value="New_analysis", font=("LG1052", 14), bg='white', state=tk.ACTIVE)
+    radio_button2 = tk.Radiobutton(canvas, text="Add a template", command=add_template, variable=radio_var,
+                                   value="Add_template", font=("LG1052", 14), bg='white', state=tk.ACTIVE)
+    # Position the radio buttons on the canvas
+    canvas.create_window(200, 200, window=radio_button1)  # Position Option 1
+    canvas.create_window(200, 250, window=radio_button2)
+
+    start = tk.Button(root, text="Start Capture ", command=start_capture, width=25, height=2, bg='black', fg='white',font=('LG1052', 14))
+    start.config(state=tk.DISABLED)
+    radio_var.trace("w", update_button_state)
+    canvas.create_window(250, 790, window=start)
+
+    create_rounded_rectangle_type1(canvas, 95, 180, 400, 220, radius=20, fill="white", outline="white", width=2)
+    create_rounded_rectangle_type1(canvas, 95, 230, 400, 270, radius=20, fill="white", outline="white", width=2)
+
+    canvas_items_from_newanalysis = []
+    widget_items_from_newanalysis = []
+    user_box = create_rounded_rectangle_type1(canvas, 95, 300+20, 400, 340+20, radius=20, fill="#f0f0f0", outline="#f0f0f0", width=2)
+    time_box =  create_rounded_rectangle_type1(canvas, 95, 370+20, 400, 410+20, radius=20, fill="#f0f0f0", outline="#f0f0f0", width=2)
+    serial_num_box = create_rounded_rectangle_type1(canvas, 95, 440+20, 400, 480+20, radius=20, fill="#f0f0f0", outline="#f0f0f0", width=2)
+    model_name_box = create_rounded_rectangle_type1(canvas, 95, 510+20, 400, 550+20, radius=20, fill="#f0f0f0", outline="#f0f0f0", width=2)
+    non_conformity_box = create_rounded_rectangle_type2(canvas, 95, 600, 400, 700+30, radius=30, fill="#f0f0f0", outline="#f0f0f0", width=2)
+
+    canvas_items_from_newanalysis.append(user_box)
+    canvas_items_from_newanalysis.append(time_box)
+    canvas_items_from_newanalysis.append(serial_num_box)
+    canvas_items_from_newanalysis.append(model_name_box)
+    canvas_items_from_newanalysis.append(non_conformity_box)
+
+    user_icon = icon_to_image("user", fill="#E20612", scale_to_width=20)
+    user_label = tk.Label(canvas, image=user_icon)
+    canvas.create_window(370, 340, window=user_label)
+    user_label.image = user_icon
+
+    time_icon = icon_to_image("clock", fill="#E20612", scale_to_width=20)
+    time_label = tk.Label(canvas, image=time_icon)
+    canvas.create_window(370, 410, window=time_label)
+    time_label.image = time_icon
+
+    serial_num_icon = icon_to_image("hashtag", fill="#E20612", scale_to_width=20)
+    serial_num_label = tk.Label(canvas, image=serial_num_icon)
+    canvas.create_window(370, 480, window=serial_num_label)
+    serial_num_label.image = serial_num_icon
+
+    model_name_icon = icon_to_image("star", fill="#E20612", scale_to_width=20)
+    model_name_label = tk.Label(canvas, image=model_name_icon)
+    canvas.create_window(370, 550, window=model_name_label)
+    model_name_label.image = model_name_icon
+
+    note_icon = icon_to_image("clipboard", fill="#E20612", scale_to_width=20)
+    note_label = tk.Label(canvas, image=note_icon)
+    canvas.create_window(370, 630, window=note_label)
+    note_label.image = note_icon
+
+    info_icon = icon_to_image("info-circle", fill="#E20612", scale_to_width=25)
+    info_label = tk.Label(canvas, image=info_icon)
+    canvas.create_window(370, 680, window=info_label)
+    info_label.image = info_icon
+
+    widget_items_from_newanalysis.append(user_label)
+    widget_items_from_newanalysis.append(time_label)
+    widget_items_from_newanalysis.append(serial_num_label)
+    widget_items_from_newanalysis.append(model_name_label)
+    widget_items_from_newanalysis.append(note_label)
+
+
+    video_frame = Frame(root, bg="pink", width=900, height=500)
+    canvas.create_window(700, 460, window=video_frame)
+
+    # Maintain references to avoid garbage collection
+    canvas.image = rectangle_photo
+
+    camera = initialize_camera()
+    camera_available = camera is not None
+
+    video_label = Label(video_frame)
+    video_label.pack()
+
+    if not camera_available:
+        video_label.config(text="No camera available", font=("LG1052", 24), fg="white", bg="black")
+        video_label.pack(pady=20)
+    else:
+        show_frame()  # Start showing the live feed
+    print('aaaaa',radio_var)
+
+# Create the main window
+root = tk.Tk()
+root.resizable(False, False)
+root.attributes('-fullscreen', True)
+root.bind("<Escape>", lambda event: root.destroy())
+
+# Load the background image
+background_image1 = Image.open(r"C:\Users\rbaptista\PycharmProjects\pythonProject1\images for program\Hunting_Riflescopes_Content-teaser_0.jpg").convert('RGBA')
+icon = Image.open(r"C:\Users\rbaptista\PycharmProjects\pythonProject1\images for program\Leica_symbol.png").convert('RGBA')
+# Create a Canvas widget
+canvas = tk.Canvas(root, width=root.winfo_screenwidth(), height=root.winfo_screenheight())
+canvas.pack(fill="both", expand=True)
+
+screen_width = root.winfo_screenwidth()
+screen_height = root.winfo_screenheight()
+
+# Resize the background image to fill the screen
+resized_bg = background_image1.resize((screen_width, screen_height), Image.LANCZOS)
+
+x1 = 0
+y1 = 0
+rect_width1 = screen_width
+rect_height1 = 100
+alpha1 = 128
+overlay = Image.new("RGBA", resized_bg.size, (0, 0, 0, 0))
+draw = ImageDraw.Draw(overlay)
+rect_color = (0, 0, 0, alpha1)
+draw.rectangle([x1, y1, rect_width1, rect_height1], fill=rect_color)
+image_with_rectangle = Image.alpha_composite(resized_bg, overlay)
+
+rounded_mask = Image.new("L", image_with_rectangle.size, 0)
+draw = ImageDraw.Draw(rounded_mask)
+draw.rounded_rectangle((0, 0) + image_with_rectangle.size, radius=40, fill=255)
+
+image_with_corners = image_with_rectangle.copy()
+image_with_corners.putalpha(rounded_mask)
+
+background_photo1 = ImageTk.PhotoImage(image_with_corners)
+
+canvas.create_image(0, 0, image=background_photo1, anchor="nw")
+
+icon_photo = ImageTk.PhotoImage(icon)
+
+# Add the icon image on top of the background and overlay
+canvas.create_image(10, 0, image=icon_photo, anchor="nw")
+
+text_on_canvas = canvas.create_text(130, 50, text="Visual Inspection Mechanism", fill="white",font=("LG1052", 16, 'bold'), anchor="w")
+
+user_id_text = canvas.create_text(700, 300, text="Add User ID", fill="white", font=("LG1052", 14, 'bold'), anchor='nw')
+
+entry_user_id = tk.Entry(root, font=("LG1052", 14))
+canvas.create_window(770, 350,window=entry_user_id)  # Position below the label
+
+# Add an Enter button that triggers the switch to the new page
+enter_button = tk.Button(root, text="Enter", command=go_to_new_page, font=("LG1052", 14, "bold"), state="disabled")
+canvas.create_window(770, 400, window=enter_button)
+
+entry_user_id_var = tk.StringVar()
+entry_user_id_var.trace_add("write", lambda *args: (enter_button.config(state="normal") if entry_user_id_var.get().strip() else enter_button.config(state="disabled")))
+entry_user_id.config(textvariable=entry_user_id_var)
+
+# Create the entry box on the canvas
+canvas.create_window(770, 350, window=entry_user_id)
+
+# Keep a reference to the image to prevent garbage collection
+canvas.image = background_photo1
+canvas.icon_image = icon_photo
+# Run the Tkinter event loop
+root.mainloop()
+
+
